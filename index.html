@@ -8,8 +8,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js" defer></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/three-csg-ts@3.1.11/dist/index.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -19,7 +22,7 @@
                 <textarea 
                     id="textInput" 
                     class="text-input" 
-                    placeholder="e.g., A 50mm diameter gear, 20mm thick, with 24 teeth and a 10mm central hole."></textarea>
+                    placeholder="e.g., A 40mm cube with a 15mm diameter cylindrical hole through the center."></textarea>
             </div>
             
             <button class="btn" id="generateBtn">
@@ -30,18 +33,17 @@
                 <h4>Model Parameters</h4>
                 <div class="param-group">
                     <label>Detail Level</label>
-                    <input type="range" class="param-slider" id="detailLevel" min="8" max="64" value="24">
-                    <span id="detailValue">24</span>
+                    <input type="range" class="param-slider" id="detailLevel" min="8" max="64" value="32">
+                    <span id="detailValue">32</span>
                 </div>
             </div>
 
             <div class="control-panel">
                 <h4>Quick Shapes</h4>
                 <div class="shape-grid">
-                    <button class="shape-btn" data-shape="cube">📦 Cube</button>
-                    <button class="shape-btn" data-shape="sphere">🌐 Sphere</button>
-                    <button class="shape-btn" data-shape="cylinder">🛢️ Cylinder</button>
-                    <button class="shape-btn" data-shape="gear">⚙️ Gear</button>
+                    <button class="shape-btn" data-shape="cube-with-hole">Cube + Hole</button>
+                    <button class="shape-btn" data-shape="flange">Pipe Flange</button>
+                    <button class="shape-btn" data-shape="gear">Gear</button>
                 </div>
             </div>
 
