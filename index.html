@@ -1,73 +1,107 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Next-Gen AI Text-to-CAD</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+// This module simulates a backend AI service.
+// It takes a text prompt and returns a structured list of modeling operations.
+
+// Helper to find numerical values (e.g., "50mm", "24 teeth")
+const findDim = (text, regex) => {
+    const match = text.match(regex);
+    return match ? parseFloat(match[1]) : null;
+}
+
+function processPrompt(prompt) {
+    const text = prompt.toLowerCase();
+    let operations = [];
+
+    // --- Case 1: Cube with a cylindrical hole ---
+    if (text.includes('cube') && (text.includes('hole') || text.includes('cutout'))) {
+        const cubeSize = findDim(text, /(\d+\.?\d*)\s*mm\s*cube/) || findDim(text, /cube\s*of\s*(\d+\.?\d*)/) || 40;
+        const holeDiameter = findDim(text, /(\d+\.?\d*)\s*mm\s*diameter\s*hole/) || findDim(text, /(\d+\.?\d*)\s*mm\s*hole/) || cubeSize / 3;
+
+        operations = [
+            {
+                operation: "create",
+                shape: "cube",
+                params: { size: cubeSize },
+                id: "baseCube" // Give it an ID to reference later
+            },
+            {
+                operation: "create",
+                shape: "cylinder",
+                params: { radius: holeDiameter / 2, height: cubeSize * 1.5 }, // Make it longer to ensure a clean cut
+                id: "cutterCylinder"
+            },
+            {
+                operation: "subtract", // Boolean operation
+                target: "baseCube",   // The object to cut from
+                tool: "cutterCylinder" // The object to use for cutting
+            }
+        ];
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js" defer></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/three-csg-ts@3.1.11/dist/index.min.js"></script>
-</head>
-<body>
-    <div class="container">
-        <div class="sidebar">
-            <div class="input-section">
-                <label for="textInput">Describe your model:</label>
-                <textarea 
-                    id="textInput" 
-                    class="text-input" 
-                    placeholder="e.g., A 40mm cube with a 15mm diameter cylindrical hole through the center."></textarea>
-            </div>
-            
-            <button class="btn" id="generateBtn">
-                <span id="generateText">Generate Model</span>
-            </button>
-
-            <div class="control-panel">
-                <h4>Model Parameters</h4>
-                <div class="param-group">
-                    <label>Detail Level</label>
-                    <input type="range" class="param-slider" id="detailLevel" min="8" max="64" value="32">
-                    <span id="detailValue">32</span>
-                </div>
-            </div>
-
-            <div class="control-panel">
-                <h4>Quick Shapes</h4>
-                <div class="shape-grid">
-                    <button class="shape-btn" data-shape="cube-with-hole">Cube + Hole</button>
-                    <button class="shape-btn" data-shape="flange">Pipe Flange</button>
-                    <button class="shape-btn" data-shape="gear">Gear</button>
-                </div>
-            </div>
-
-            <div id="status" class="status"></div>
-        </div>
+    // --- Case 2: A simple gear ---
+    } else if (text.includes('gear')) {
+        const diameter = findDim(text, /(\d+\.?\d*)\s*mm\s*diameter/) || 60;
+        const teeth = findDim(text, /(\d+)\s*teeth/) || 24;
+        const thickness = findDim(text, /(\d+\.?\d*)\s*mm\s*thick/) || 10;
         
-        <div class="main-content">
-            <div class="header">
-                <h1>Next-Gen AI Text-to-CAD</h1>
-                <p>Translating natural language into precise 3D geometry.</p>
-            </div>
-            
-            <div class="viewport">
-                <canvas id="canvas"></canvas>
-            </div>
-            
-            <div class="controls">
-                <button class="control-btn" id="resetViewBtn">🔄 Reset View</button>
-                <button class="control-btn" id="toggleWireframeBtn">📏 Wireframe</button>
-                <button class="control-btn" id="exportStlBtn">💾 Export STL</button>
-            </div>
-        </div>
-    </div>
+        operations = [{
+            operation: "create",
+            shape: "gear",
+            params: { radius: diameter / 2, teeth, thickness },
+            id: "final"
+        }];
 
-    <script type="module" src="js/main.js"></script>
-</body>
-</html>
+    // --- Case 3: A pipe flange ---
+    } else if (text.includes('flange')) {
+        const outerDia = 80;
+        const innerDia = 30;
+        const thickness = 15;
+        const holeDia = 8;
+        const holePatternDia = 55;
+
+        operations = [
+            { operation: "create", shape: "cylinder", params: { radius: outerDia / 2, height: thickness }, id: "baseFlange" },
+            { operation: "create", shape: "cylinder", params: { radius: innerDia / 2, height: thickness * 1.5 }, id: "centerHole" },
+            { operation: "subtract", target: "baseFlange", tool: "centerHole", id: "flangeWithHole" },
+            { operation: "create", shape: "cylinder", params: { radius: holeDia / 2, height: thickness * 1.5 }, id: "boltHoleCutter" },
+            { operation: "pattern", shape: "circular", count: 4, radius: holePatternDia / 2, tool: "boltHoleCutter", id: "allBoltHoles" },
+            { operation: "subtract", target: "flangeWithHole", tool: "allBoltHoles" }
+        ];
+
+    // --- Fallback: A simple cube ---
+    } else {
+         const size = findDim(text, /(\d+\.?\d*)\s*mm/) || 30;
+         operations = [{
+            operation: "create",
+            shape: "cube",
+            params: { size },
+            id: "final"
+         }];
+    }
+
+    if (operations.length === 0) {
+        throw new Error("I'm sorry, I couldn't understand that instruction. Please be more specific.");
+    }
+    
+    return { success: true, operations };
+}
+
+
+// This function simulates making a network request to a real AI service.
+// In a real application, this would use `fetch()` to call your backend.
+function getModelInstructions(prompt) {
+    console.log("Simulating AI Request with prompt:", prompt);
+    
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            try {
+                const result = processPrompt(prompt);
+                console.log("Simulated AI Response:", result);
+                resolve(result);
+            } catch (error) {
+                reject(error);
+            }
+        }, 1000); // Simulate network latency
+    });
+}
+
+
+export { getModelInstructions };
